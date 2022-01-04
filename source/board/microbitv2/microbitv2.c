@@ -159,7 +159,7 @@ void handle_reset_button()
         if (!reset_pressed && (gpio_get_reset_btn_fwrd() || wake_from_reset)) {
             // Reset button pressed
             target_set_state(RESET_PROGRAM);
-            i2c_clearBuffers();
+            i2c_clearState();
             reset_pressed = 1;
             gpio_reset_count = 0;
             wake_from_reset = 0;
@@ -402,7 +402,7 @@ void board_vfs_stream_closed_hook()
     main_shutdown_state = MAIN_SHUTDOWN_WAITING;
 
     // Clear any pending I2C response
-    i2c_clearBuffers();
+    i2c_clearState();
 
     // Release COMBINED_SENSOR_INT
     gpio_disable_combined_int();
