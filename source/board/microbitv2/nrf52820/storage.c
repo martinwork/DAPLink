@@ -38,8 +38,42 @@ storage_status_t storage_program_flash(uint32_t adr, uint32_t sz, uint8_t *buf)
     return STORAGE_SUCCESS;
 }
 
+
+// Set to 1 to enable debugging
+#define STORAGE_DEBUG     0
+
+#if STORAGE_DEBUG
+#include "daplink_debug.h"
+#define storage_debug_msg    debug_msg
+#else
+#define storage_debug_msg(...)
+#endif
+
+
+#ifndef STORAGE_AVOID_ERASE
+#define STORAGE_AVOID_ERASE 1
+#endif
+
+
 storage_status_t storage_erase_flash_page(uint32_t adr)
 {
+#if STORAGE_AVOID_ERASE
+    bool empty = true;
+    uint32_t *next = (uint32_t *) adr + 1024; 
+    for ( uint32_t *p = (uint32_t *) adr; p < next; p++) {
+        if ( *p != 0xFFFFFFFFu) {
+            empty = false;
+            break;
+        }
+    }
+    if ( empty) {
+        storage_debug_msg("[%x empty]\n", adr);
+        return STORAGE_SUCCESS;
+    }
+
+    storage_debug_msg("[%x ERASE]\n", adr)
+#endif
+
     // This operation can take up to 87.5ms
     nrf_nvmc_mode_set(NRF_NVMC, NRF_NVMC_MODE_ERASE);
     nrf_nvmc_page_erase_start(NRF_NVMC, adr);
