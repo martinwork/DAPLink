@@ -38,8 +38,43 @@ storage_status_t storage_program_flash(uint32_t adr, uint32_t sz, uint8_t *buf)
     return STORAGE_SUCCESS;
 }
 
+#ifndef NRF5820_PARTIAL_ERASE
+#define NRF5820_PARTIAL_ERASE 1
+#endif
+
+#include "cortex_m.h"
+
 storage_status_t storage_erase_flash_page(uint32_t adr)
 {
+#if defined(NRF_NVMC_PARTIAL_ERASE_PRESENT) && NRF5820_PARTIAL_ERASE
+    uint32_t partialWas = nrf_nvmc_partial_erase_duration_get(NRF_NVMC);
+    uint32_t partial    = 1;
+    nrf_nvmc_partial_erase_duration_set(NRF_NVMC, partial);
+
+    for ( uint32_t total = 0; total < 87; total += partial) {
+        //cortex_int_state_t state;
+        //state = cortex_int_get_and_disable();
+
+#if defined(NVMC_CONFIG_WEN_PEen)
+        nrf_nvmc_mode_set(NRF_NVMC, NRF_NVMC_MODE_PARTIAL_ERASE);
+#else
+        nrf_nvmc_mode_set(NRF_NVMC, NRF_NVMC_MODE_ERASE);
+#endif
+
+        nrf_nvmc_page_partial_erase_start(NRF_NVMC, adr);
+        while (!nrf_nvmc_ready_check(NRF_NVMC)) {
+        }
+
+        nrf_nvmc_mode_set(NRF_NVMC, NRF_NVMC_MODE_READONLY);
+
+        //cortex_int_restore(state);
+
+        //for (uint32_t count = 1000; count > 0UL; count--)
+        //    nrf_nvmc_mode_set(NRF_NVMC, NRF_NVMC_MODE_READONLY);
+    }
+
+    nrf_nvmc_partial_erase_duration_set(NRF_NVMC, partialWas);
+#else
     // This operation can take up to 87.5ms
     nrf_nvmc_mode_set(NRF_NVMC, NRF_NVMC_MODE_ERASE);
     nrf_nvmc_page_erase_start(NRF_NVMC, adr);
@@ -47,6 +82,7 @@ storage_status_t storage_erase_flash_page(uint32_t adr)
         // Wait for controller to be ready
     }
     nrf_nvmc_mode_set(NRF_NVMC, NRF_NVMC_MODE_READONLY);
+#endif
 
     return STORAGE_SUCCESS;
 }
